@@ -83,9 +83,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-dvh items-center justify-center p-4">
         <div className="card max-w-sm p-6 text-center">
-          <h1 className="mb-2 font-semibold">{state === 'unregistered' ? 'Number not registered' : 'Could not load your account'}</h1>
+          <h1 className="mb-2 font-semibold">{state === 'unregistered' ? 'Email not registered' : 'Could not load your account'}</h1>
           <p className="mb-4 text-sm text-stone-500">
-            {state === 'unregistered' ? 'Ask your admin to add your mobile number.' : error}
+            {state === 'unregistered' ? 'Ask your admin to add your email address.' : error}
           </p>
           <button className="btn-ghost" onClick={logout}>Log out</button>
         </div>

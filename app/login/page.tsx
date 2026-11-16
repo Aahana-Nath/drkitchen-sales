@@ -2,36 +2,53 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { errMsg, normalisePhone } from '@/lib/format'
+import { errMsg, normaliseEmail } from '@/lib/format'
 
 export default function LoginPage() {
-  const [step, setStep] = useState<'phone' | 'code'>('phone')
-  const [phone, setPhone] = useState('')
+  const [step, setStep] = useState<'email' | 'code'>('email')
+  const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const e164 = () => '+' + normalisePhone(phone)
-
   async function sendCode(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    if (!normalisePhone(phone)) return setError('Enter a 10-digit mobile number')
+    const address = normaliseEmail(email)
+    if (!address) return setError('Enter a valid email address')
     setBusy(true)
-    const { error } = await supabase().auth.signInWithOtp({ phone: e164() })
-    setBusy(false)
-    if (error) return setError(errMsg(error))
-    setStep('code')
+    try {
+      const sb = supabase()
+      const allowed = await sb.rpc('email_allowed', { p_email: address })
+      if (allowed.error) throw allowed.error
+      if (!allowed.data) {
+        setError('This email is not registered. Ask your admin to add it.')
+        return
+      }
+      const { error } = await sb.auth.signInWithOtp({ email: address })
+      if (error) throw error
+      setEmail(address)
+      setStep('code')
+    } catch (e) {
+      setError(errMsg(e))
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function verify(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     setBusy(true)
-    const { error } = await supabase().auth.verifyOtp({ phone: e164(), token: code.trim(), type: 'sms' })
-    setBusy(false)
-    if (error) return setError(errMsg(error))
-    window.location.href = '/'
+    try {
+      const { error } = await supabase().auth.verifyOtp({ email, token: code.trim(), type: 'email' })
+      if (error) throw error
+      window.location.href = '/'
+    } catch (e) {
+      setError(errMsg(e))
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -45,32 +62,30 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {step === 'phone' ? (
+        {step === 'email' ? (
           <form onSubmit={sendCode} className="space-y-4">
             <div>
-              <label className="label" htmlFor="phone">Mobile number</label>
-              <div className="flex">
-                <span className="flex items-center rounded-l-lg border border-r-0 border-stone-300 bg-stone-100 px-3 text-sm text-stone-600">+91</span>
-                <input
-                  id="phone" className="input rounded-l-none text-base" inputMode="numeric" autoComplete="tel-national"
-                  placeholder="98765 43210" value={phone} onChange={(e) => setPhone(e.target.value)} autoFocus
-                />
-              </div>
+              <label className="label" htmlFor="email">Email address</label>
+              <input
+                id="email" type="email" required className="input text-base" inputMode="email" autoComplete="email"
+                placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus
+              />
             </div>
             <button className="btn-primary w-full py-3" disabled={busy}>{busy ? 'Sending…' : 'Get code'}</button>
           </form>
         ) : (
           <form onSubmit={verify} className="space-y-4">
             <div>
-              <label className="label" htmlFor="code">Code sent to +91 {phone.replace(/\D/g, '').slice(-10)}</label>
+              <label className="label" htmlFor="code">Code sent to {email}</label>
               <input
                 id="code" className="input text-center text-2xl tracking-[0.4em]" inputMode="numeric" autoComplete="one-time-code"
-                maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} autoFocus
+                minLength={6} maxLength={8} required pattern="[0-9]{6,8}" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} autoFocus
               />
+              <p className="mt-2 text-xs text-stone-500">Check your inbox and spam folder.</p>
             </div>
             <button className="btn-primary w-full py-3" disabled={busy || code.length < 6}>{busy ? 'Checking…' : 'Log in'}</button>
-            <button type="button" className="w-full text-sm text-stone-500" onClick={() => { setStep('phone'); setCode('') }}>
-              Change number
+            <button type="button" disabled={busy} className="w-full text-sm text-stone-500" onClick={() => { setStep('email'); setCode(''); setError(null) }}>
+              Change email
             </button>
           </form>
         )}

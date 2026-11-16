@@ -4,12 +4,15 @@ import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
 import { inr, niceDate, num } from '@/lib/format'
 import type { DailyPoint, SkuSummary } from '@/lib/types'
 
-export function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'warn' | 'ok' }) {
+export function Kpi({ label, value, sub, tone, action }: {
+  label: string; value: string; sub?: string; tone?: 'warn' | 'ok'; action?: React.ReactNode
+}) {
   return (
     <div className="card p-3">
       <div className="text-xs font-medium text-stone-500">{label}</div>
       <div className={`mt-0.5 text-xl font-bold ${tone === 'warn' ? 'text-amber-700' : tone === 'ok' ? 'text-green-700' : ''}`}>{value}</div>
       {sub && <div className="text-xs text-stone-500">{sub}</div>}
+      {action && <div className="mt-2">{action}</div>}
     </div>
   )
 }

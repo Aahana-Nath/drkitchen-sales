@@ -46,6 +46,11 @@ export function niceTime(ts: string): string {
   return new Date(ts).toLocaleTimeString('en-IN', { timeZone: TZ, hour: 'numeric', minute: '2-digit' })
 }
 
+export function normaliseEmail(input: string): string | null {
+  const email = input.trim().toLowerCase()
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : null
+}
+
 /** '9876543210' or '+91 98765 43210' → '919876543210' (Supabase storage format) */
 export function normalisePhone(input: string): string | null {
   const digits = input.replace(/\D/g, '')

@@ -105,7 +105,7 @@ select s.id, date '2026-11-01', v.mrp, round(v.mrp / 1.26, 6) from (values
   ('AJW-S-100', 56)
 ) v(code, mrp) join public.skus s on s.code = v.code;
 
--- Sellers from the workbooks. Phones are blank: fill them in before they can log in.
+-- Sellers from the workbooks. Assign login emails before they can access the app.
 insert into public.profiles (full_name, role, region_id)
 select v.name, 'seller', r.id from (values
   ('Govind', 'DELHI'),
@@ -122,6 +122,6 @@ select v.name, 'seller', r.id from (values
   ('Kailash Pandey', 'EAST_UP')
 ) v(name, rcode) join public.regions r on r.code = v.rcode;
 
--- Superadmin. Set the real phone (digits with country code, no '+') before first login:
---   update public.profiles set phone = '91XXXXXXXXXX' where role = 'superadmin';
+-- Superadmin. Set the real login email before first login:
+--   update public.profiles set email = 'you@example.com' where role = 'superadmin';
 insert into public.profiles (full_name, role) values ('Superadmin', 'superadmin');

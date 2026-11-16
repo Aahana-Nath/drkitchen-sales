@@ -8,12 +8,12 @@ export const DEMO_REGIONS: Region[] = [{ id: 1, code: 'DELHI', name: 'Delhi' }]
 
 export const DEMO_SELLERS: Profile[] = ['Govind', 'Naveen', 'Jaspal Singh', 'Umesh Kumar'].map((full_name, index) => ({
   id: ['demo-govind', 'demo-naveen', 'demo-jaspal', 'demo-umesh'][index],
-  auth_user_id: null, full_name, phone: null, role: 'seller', region_id: 1,
+  auth_user_id: null, full_name, phone: null, email: `seller${index + 1}@example.com`, role: 'seller', region_id: 1,
   is_active: true, regions: { name: 'Delhi' },
 }))
 
 export const DEMO_MANAGER: Profile = {
-  id: 'demo-manager', auth_user_id: null, full_name: 'Demo Manager', phone: null,
+  id: 'demo-manager', auth_user_id: null, full_name: 'Demo Manager', phone: null, email: 'manager@example.com',
   role: 'regional_manager', region_id: 1, is_active: true, regions: { name: 'Delhi' },
 }
 

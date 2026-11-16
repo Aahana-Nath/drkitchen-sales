@@ -1,7 +1,7 @@
 # DrKitchen Sales
 
 Daily sales entry for sellers + dashboards for regional managers and superadmin.
-Next.js 15 (App Router) · Supabase (Postgres, phone login, row-level security) · Tailwind.
+Next.js 15 (App Router) · Supabase (Postgres, email OTP login, row-level security) · Tailwind.
 
 ## Run it on your Mac
 
@@ -12,8 +12,45 @@ cp .env.example .env.local      # then paste your Project URL + anon/publishable
 npm run dev                     # http://localhost:3000
 ```
 
-Log in with a number listed under **Authentication → Sign In / Providers → Phone → Test Phone Numbers and OTPs**
-(code = the one you set there, e.g. 123456). The number must also be on a row in `profiles`.
+Log in with the email on an active `profiles` row and enter the emailed code.
+Phone numbers are optional contact information, not login identities.
+
+### Switching an existing database to email login
+
+Apply `20261114000001_email_login.sql` to staging before deploying this UI.
+It clears phone-login profile links; users cannot access their profiles until
+an admin assigns their email and they verify it. Seller IDs and sales history
+are preserved. Apply and verify separately in production when ready.
+
+In Supabase Authentication, enable Email and disable Phone sign-in. Configure
+the **Confirm signup** and **Magic Link** email templates to display
+`{{ .Token }}` (not just a link). Configure SMTP for seller email delivery;
+the default sender has recipient restrictions and low sending limits.
+Initial email OTP login creates an Auth account, so email signups must be
+enabled unless accounts are provisioned in advance.
+
+Populate `profiles.email` with reviewed addresses in the SQL Editor or admin UI.
+Set your own superadmin email explicitly before trying to log in. Review the
+separate patch folder's email-load script before running it: it contains personal
+addresses and automatically assigns an address to blank superadmin profiles.
+Only confirmed email accounts link to profiles. Changing a profile's email removes
+the previous login's access; changing a contact phone does not. Inactive profiles
+remain blocked by RLS.
+
+`email_allowed` is a public login-screen precheck, not a server-enforced restriction
+on creating Auth accounts. It exposes whether an email is registered; unknown
+accounts still have no profile or sales access under the database policies.
+
+### Seller reminder emails
+
+The dashboard's Pending overview can send a personal reminder to a seller who has
+not submitted today's report. Configure the server-only `SMTP_HOST`, `SMTP_PORT`,
+`SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, and `SMTP_FROM_NAME` variables
+from `.env.example` in local `.env.local` and in the Vercel project's server
+environment settings. Use the sender Gmail's App Password for `SMTP_PASSWORD`;
+do not expose it through a `NEXT_PUBLIC_` variable. This is separate from
+Supabase Auth's SMTP configuration. The server verifies the caller's manager
+role, regional scope, seller status, and today's submission before sending.
 
 ### Local UI preview (no SMS or database writes)
 
@@ -47,13 +84,13 @@ Sellers open the URL on their phone → browser menu → **Add to Home Screen**.
 
 | Path | Who | What |
 |---|---|---|
-| `/login` | everyone | mobile number → 6-digit code |
+| `/login` | everyone | registered email → email verification code |
 | `/entry` | seller | today / yesterday (until 12:00 IST): 12 products × ₹10/50g/100g steppers, remarks, live ₹ total, submit (zero = "no sales") |
 | `/entry?seller=…&date=…` | RM, superadmin | view / correct any seller-day in scope (logged) |
 | `/me` | seller | month KPIs, daily chart, days submitted, by-product; own packets-by-spice pie chart with independent date range, quick dates (including all time), pack-size and spice filters |
 | `/dashboard` | RM (own region), superadmin (all) | date range + quick ranges (including Yesterday and All time), region / seller filters, search, KPIs, date-wise chart, packets-by-spice pie chart with pack-size and spice filters, seller leaderboard with pack split, by-product, **Export Excel** (Summary / Daily / Lines) |
 | `/dashboard/seller/[id]` | RM, superadmin | month day × SKU grid like the old DSR tab, day status colours, tap a day to correct, **Export DSR** in the old layout |
-| `/admin/users` | superadmin | add / edit / deactivate users, phone, role, region, login status |
+| `/admin/users` | superadmin | add / edit / deactivate users, login email, optional contact phone, role, region, login status |
 | `/admin/prices` | superadmin | current MRP + basic cost, schedule a price change from a date, hide/show SKUs |
 
 All data access is enforced in the database; the UI only hides what a role can't use.
@@ -81,6 +118,5 @@ tests/                     database test scripts
 
 ## Later
 
-- Real SMS: Send SMS hook → MSG91 (after DLT), or switch to phone + PIN.
 - Reminder at 8 pm to sellers who haven't submitted.
 - Targets per seller.

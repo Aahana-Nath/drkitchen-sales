@@ -15,6 +15,7 @@ export interface Profile {
   auth_user_id: string | null
   full_name: string
   phone: string | null
+  email: string | null
   role: Role
   region_id: number | null
   is_active: boolean

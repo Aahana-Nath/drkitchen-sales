@@ -36,6 +36,7 @@ function Entry() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [successPopup, setSuccessPopup] = useState<string | null>(null)
 
   // master data
   useEffect(() => {
@@ -125,6 +126,7 @@ function Entry() {
   async function save() {
     setBusy(true)
     setMsg(null)
+    setSuccessPopup(null)
     if (isDemoMode) {
       const now = new Date().toISOString()
       saveDemoReport(sellerId, date, { quantities: { ...qty }, remarks: remarks.trim(), submittedAt: now })
@@ -132,21 +134,32 @@ function Entry() {
       setSaved({ ...qty })
       setSubmittedAt(now)
       setMsg({ ok: true, text: 'Saved in this browser’s local demo only' })
+      setSuccessPopup('Saved in this browser’s local demo only')
       return
     }
 
     const lines = skus.map((s) => ({ sku_id: s.id, quantity: qty[s.id] ?? 0 }))
-    const { error } = await supabase().rpc('save_daily_report', {
-      p_date: date,
-      p_lines: lines,
-      p_remarks: remarks.trim() || null,
-      p_seller: isSeller ? null : sellerId,
-    })
-    setBusy(false)
-    if (error) return setMsg({ ok: false, text: errMsg(error) })
-    setSaved({ ...qty })
-    setSubmittedAt(submittedAt ?? new Date().toISOString())
-    setMsg({ ok: true, text: totals.pieces ? 'Saved' : 'Saved as a no-sale day' })
+    try {
+      const { error } = await supabase().rpc('save_daily_report', {
+        p_date: date,
+        p_lines: lines,
+        p_remarks: remarks.trim() || null,
+        p_seller: isSeller ? null : sellerId,
+      })
+      if (error) {
+        setMsg({ ok: false, text: errMsg(error) })
+        return
+      }
+      setSaved({ ...qty })
+      setSubmittedAt(submittedAt ?? new Date().toISOString())
+      const text = submittedAt ? 'Entry updated successfully' : 'Submitted successfully'
+      setMsg({ ok: true, text: totals.pieces ? 'Saved' : 'Saved as a no-sale day' })
+      setSuccessPopup(text)
+    } catch (e) {
+      setMsg({ ok: false, text: errMsg(e) })
+    } finally {
+      setBusy(false)
+    }
   }
 
   const sellerName = isSeller ? profile.full_name : sellers.find((s) => s.id === sellerId)?.full_name
@@ -258,6 +271,31 @@ function Entry() {
       )}
 
       {!sellerId && msg && <p className="mt-3 text-sm text-red-700">{msg.text}</p>}
+
+      {successPopup && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSuccessPopup(null)
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="entry-success-title"
+            className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl"
+          >
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-2xl font-bold text-green-700" aria-hidden="true">
+              ✓
+            </div>
+            <h2 id="entry-success-title" className="text-lg font-bold text-stone-900">{successPopup}</h2>
+            <p className="mt-1 text-sm text-stone-500">
+              {totals.pieces ? `${num(totals.pieces)} pieces recorded for ${niceDate(date)}.` : `No sales recorded for ${niceDate(date)}.`}
+            </p>
+            <button className="btn-primary mt-5 w-full" onClick={() => setSuccessPopup(null)}>Done</button>
+          </section>
+        </div>
+      )}
     </div>
   )
 }
